@@ -210,9 +210,10 @@
   .size-label{font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--ink-soft);margin-bottom:8px;}
   .sizes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
   .size-opt{
-    width:44px;height:44px;border-radius:50%;
+    min-width:44px;height:44px;padding:0 12px;border-radius:22px;
     border:1.5px solid var(--line);background:var(--bg);
     font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;
+    white-space:nowrap;
   }
   .size-opt.selected{background:var(--ink);color:var(--bg);border-color:var(--ink);}
   .size-opt.esgotado{
@@ -220,8 +221,8 @@
     cursor:not-allowed;position:relative;opacity:0.6;
   }
   .size-opt.esgotado::after{
-    content:'';position:absolute;left:6px;right:6px;top:50%;
-    height:1.5px;background:var(--line);transform:rotate(-38deg);
+    content:'';position:absolute;left:8px;right:8px;top:50%;
+    height:1.5px;background:var(--ink-soft);opacity:0.55;
   }
   .aviso-estoque{
     font-size:13px;color:var(--accent-dark);font-weight:600;
@@ -429,11 +430,6 @@
 <section class="screen active" id="screen-catalogo">
   <div class="hero" style="padding-left:0;padding-right:0;">
     <h1>Sandálias e chinelos para <em>cada passo</em> do seu dia.</h1>
-    <p>Sua melhor escolha. Selecione o modelo e o tamanho e finalize seu pedido pagando na hora com Pix.</p>
-    <span class="pix-badge">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 2 12l10 10 10-10L12 2zm0 3.6L18.4 12 12 18.4 5.6 12 12 5.6z"/></svg>
-      Pagamento via Pix na hora
-    </span>
   </div>
   <div class="catalog">
     <h2>Coleção atual</h2>
@@ -544,7 +540,7 @@
         <button type="button" id="btn-copiar">Copiar</button>
       </div>
       <div class="copy-feedback" id="copy-feedback"></div>
-      <div class="note">Após o pagamento, toque em "Já paguei" para registrar seu pedido. Seu pedido só é reservado nesse momento.</div>
+      <div class="note">Após o pagamento, toque em "Já paguei" para registrar seu pedido. Seu pedido só é reservado nesse momento. <span style="opacity:0.55;">(v3)</span></div>
     </div>
     <div id="aviso-pedido" class="aviso-pedido" style="display:none;"></div>
     <div class="action-row">
@@ -677,16 +673,18 @@ function headersApi(){
 // Adapta uma linha vinda da tabela de produtos do painel para o formato que o site usa.
 // Ajuste aqui se os nomes das colunas no Supabase forem diferentes.
 function mapearProdutoDaApi(linha){
+  // Tamanho é texto livre: pode ser "38", "36-37", "P". Nunca converter em número.
   let tamanhos = linha.tamanhos;
   if (!Array.isArray(tamanhos)) {
-    tamanhos = String(tamanhos || '').split(',').map(n => Number(n.trim())).filter(n => !isNaN(n));
+    tamanhos = String(tamanhos || '').split(',').map(t => t.trim()).filter(t => t.length > 0);
   }
+  tamanhos = tamanhos.map(t => String(t));
   return {
     id: linha.id,
     cod: linha.cod || linha.codigo || '',
     nome: linha.nome,
     preco: Number(linha.preco) || 0,
-    tamanhos: tamanhos.length ? tamanhos : [0],
+    tamanhos: tamanhos,
     variante: linha.variante || 0,
     cor: linha.cor || 'var(--accent)',
     img: linha.img || linha.imagem || null,
@@ -968,7 +966,7 @@ function renderCatalogo(){
     const textoTamanhos = esgotado
       ? 'Sem estoque no momento'
       : (disponiveis.length === p.tamanhos.length
-          ? `Tamanhos ${p.tamanhos[0]} ao ${p.tamanhos[p.tamanhos.length-1]}`
+          ? `Tamanhos ${p.tamanhos.join(', ')}`
           : `Tamanhos ${disponiveis.join(', ')}`);
     return `
     <div class="product-card${esgotado ? ' card-esgotado' : ''}" data-id="${p.id}">
@@ -1013,7 +1011,7 @@ function abrirProduto(id){
     btn.addEventListener('click', () => {
       sizesEl.querySelectorAll('.size-opt').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
-      tamanhoSelecionado = Number(btn.dataset.size);
+      tamanhoSelecionado = btn.dataset.size;
       qtdSelecionada = 1;
       document.getElementById('qty-val').textContent = '1';
       atualizarAvisoEstoque();
