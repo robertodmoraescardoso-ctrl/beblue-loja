@@ -58,7 +58,7 @@
     *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
   }
 
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px;}
 
   /* ---------- HEADER ---------- */
   header{
@@ -68,7 +68,7 @@
   }
   .header-row{
     display:flex;align-items:center;justify-content:space-between;
-    padding:18px 24px;max-width:1080px;margin:0 auto;
+    padding:14px 24px;max-width:1280px;margin:0 auto;gap:16px;
   }
   .logo{
     display:flex;align-items:center;
@@ -97,7 +97,7 @@
   }
 
   /* ---------- HERO ---------- */
-  .hero{padding:56px 24px 32px;max-width:1080px;margin:0 auto;}
+  .hero{padding:40px 24px 24px;max-width:1280px;margin:0 auto;}
   .hero h1{font-size:clamp(32px,5vw,52px);line-height:1.05;max-width:640px;}
   .hero h1 em{color:var(--accent);font-style:italic;}
   .hero p{margin-top:14px;color:var(--ink-soft);font-size:16px;max-width:480px;line-height:1.5;}
@@ -110,22 +110,30 @@
   .pix-badge svg{width:14px;height:14px;}
 
   /* ---------- GRID / PRODUCTS ---------- */
-  .catalog{padding:8px 24px 80px;max-width:1080px;margin:0 auto;}
+  .catalog{padding:8px 24px 64px;max-width:1280px;margin:0 auto;}
   .catalog h2{font-size:14px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-soft);margin-bottom:18px;}
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
-    gap:22px;
-  }
+  /* Grade em faixas fixas em vez de auto-fill: o auto-fill deixava o tablet
+     com 2 cards largos demais e o monitor com um número imprevisível de
+     colunas conforme a janela. */
+  .grid{display:grid;gap:20px;grid-template-columns:repeat(4,1fr);}
+  @media (max-width:1100px){ .grid{grid-template-columns:repeat(3,1fr);} }
+  @media (max-width:720px){  .grid{grid-template-columns:repeat(2,1fr);gap:12px;} }
   .product-card{
     background:var(--card);
-    border-radius:var(--radius-m);
+    border-radius:14px;
     border:1px solid var(--line);
     overflow:hidden;
     display:flex;flex-direction:column;
-    transition:box-shadow .2s ease, transform .2s ease;
+    cursor:pointer;
+    transition:box-shadow .18s ease, transform .18s ease, border-color .18s ease;
   }
-  .product-card:hover{box-shadow:var(--shadow);transform:translateY(-3px);}
+  .product-card:hover{
+    box-shadow:0 12px 28px -18px rgba(1,15,54,.45);
+    transform:translateY(-2px);
+    border-color:#C7D2EA;
+  }
+  /* O dedo não tem hover: no celular o toque é que dá o retorno visual. */
+  .product-card:active{transform:scale(.985);}
   .product-img{
     position:relative;width:100%;
     /* quadrado sem usar aspect-ratio: o Safari de iPhone antigo não entende
@@ -140,23 +148,42 @@
     object-fit:contain;
     padding:14px;box-sizing:border-box;
   }
-  .product-body{padding:16px 16px 18px;display:flex;flex-direction:column;gap:10px;flex:1;}
-  .product-name{font-size:16px;font-weight:600;}
-  .product-sizes-hint{font-size:12px;color:var(--ink-soft);}
+  .product-body{padding:14px 14px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
+  .product-name{
+    font-size:14.5px;font-weight:600;line-height:1.35;
+    /* Nome em caixa normal e no máximo 2 linhas: tudo em CAIXA ALTA cansa
+       de ler e desalinha os cards quando um nome é mais longo. */
+    text-transform:none;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .product-sizes-hint{font-size:12px;color:var(--ink-soft);line-height:1.4;}
+  .produto-preco{
+    margin-top:auto;padding-top:8px;
+    font-size:18px;font-weight:700;letter-spacing:-0.01em;
+  }
+  @media (max-width:720px){
+    .product-body{padding:12px 12px 14px;}
+    .product-name{font-size:13.5px;}
+    .produto-preco{font-size:16px;}
+  }
   .estado-catalogo{
     grid-column:1/-1;text-align:center;padding:48px 20px;
     color:var(--ink-soft);font-size:15px;
   }
   .product-card.card-esgotado{cursor:default;}
-  .product-card.card-esgotado:hover{box-shadow:none;transform:none;}
-  .product-card.card-esgotado .product-img{filter:grayscale(1);opacity:0.5;}
+  .product-card.card-esgotado:hover{box-shadow:none;transform:none;border-color:var(--line);}
+  .product-card.card-esgotado:active{transform:none;}
+  .product-card.card-esgotado .product-img{filter:grayscale(1);opacity:0.45;}
   .product-card.card-esgotado .product-name,
-  .product-card.card-esgotado .tag{opacity:0.6;}
+  .product-card.card-esgotado .produto-preco{opacity:0.55;}
+  /* Esgotado vira um selo sobre a foto. Antes ocupava o lugar do botão, o
+     que dava a cada card esgotado o mesmo peso visual de um disponível. */
   .selo-esgotado{
-    margin-top:auto;text-align:center;
-    background:var(--line);color:var(--ink-soft);
-    border-radius:999px;padding:11px 18px;
-    font-weight:600;font-size:14px;
+    position:absolute;top:10px;left:10px;z-index:2;
+    background:rgba(1,15,54,.82);color:#fff;
+    border-radius:999px;padding:5px 11px;
+    font-weight:600;font-size:11px;letter-spacing:.02em;
   }
   .tag{
     align-self:flex-start;
@@ -188,6 +215,121 @@
   .btn-outline:hover{background:var(--ink);color:var(--bg);}
   .btn-block{width:100%;}
   .btn[disabled]{opacity:0.45;cursor:not-allowed;transform:none;}
+
+
+  /* ---------- VITRINE: TOPO, BUSCA E FILTRO ---------- */
+  .catalog-topo{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;margin-bottom:18px;
+  }
+  .catalog-topo h2{margin-bottom:0;}
+  .catalog-ferramentas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .campo-busca{
+    position:relative;display:flex;align-items:center;
+    background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:0 14px;min-width:240px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .campo-busca:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(2,103,253,.12);}
+  .campo-busca svg{
+    width:16px;height:16px;flex:none;
+    fill:none;stroke:var(--ink-soft);stroke-width:2;stroke-linecap:round;
+  }
+  .campo-busca input{
+    border:none;background:none;outline:none;
+    padding:10px 8px;font-size:14px;font-family:inherit;color:var(--ink);
+    width:100%;
+  }
+  .campo-busca input::-webkit-search-cancel-button{cursor:pointer;}
+  .chip-filtro{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:10px 16px;
+    font-size:13.5px;font-weight:600;color:var(--ink-soft);
+    cursor:pointer;user-select:none;white-space:nowrap;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .chip-filtro input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;margin:0;}
+  .chip-filtro:has(input:checked){border-color:var(--accent);color:var(--accent);background:rgba(2,103,253,.06);}
+
+  /* ---------- RODAPÉ ---------- */
+  .rodape{
+    background:var(--navy);color:rgba(255,255,255,.72);
+    margin-top:40px;
+  }
+  .rodape-conteudo{
+    max-width:1280px;margin:0 auto;padding:48px 24px 36px;
+    display:grid;gap:32px;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  }
+  .rodape-bloco p{font-size:13.5px;line-height:1.6;margin-top:8px;}
+  .rodape-titulo{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;
+    color:#fff;font-size:14px;letter-spacing:.02em;
+  }
+  .rodape a{color:#fff;text-decoration:underline;text-underline-offset:3px;}
+  .rodape a:hover{opacity:.8;}
+  .selos-pagamento{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .selos-pagamento span{
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+    border-radius:6px;padding:4px 9px;font-size:11.5px;font-weight:600;color:#fff;
+  }
+  .rodape-seguro{display:flex;align-items:flex-start;gap:7px;}
+  .rodape-seguro svg{
+    width:14px;height:14px;flex:none;margin-top:3px;
+    fill:none;stroke:rgba(255,255,255,.6);stroke-width:1.8;stroke-linejoin:round;
+  }
+  .rodape-base{
+    border-top:1px solid rgba(255,255,255,.1);
+    max-width:1280px;margin:0 auto;padding:18px 24px 28px;
+    font-size:12.5px;
+  }
+
+  /* ---------- BARRA FIXA DO PRODUTO (CELULAR) ----------
+     No celular o "Adicionar ao carrinho" ficava abaixo da dobra: o cliente
+     escolhia o tamanho e não via mais o botão. Agora ele acompanha a rolagem. */
+  .barra-produto{display:none;}
+  @media (max-width:720px){
+    .barra-produto{
+      display:flex;align-items:center;gap:12px;
+      position:sticky;bottom:0;z-index:5;
+      margin:16px -18px -18px;padding:12px 18px;
+      /* safe-area: no iPhone a faixa inferior comeria parte do botão */
+      padding-bottom:calc(12px + env(safe-area-inset-bottom));
+      background:var(--card);
+      border-top:1px solid var(--line);
+      box-shadow:0 -6px 18px -12px rgba(1,15,54,.35);
+    }
+    .barra-produto .valor{font-size:17px;font-weight:700;white-space:nowrap;}
+    .barra-produto .btn{flex:1;}
+    /* O botão de dentro do modal vira o da barra: não precisa dos dois. */
+    #btn-add-cart{display:none;}
+  }
+
+
+  /* ---------- AJUSTES DE CELULAR ---------- */
+  @media (max-width:720px){
+    /* A vitrine comia meia tela antes do primeiro produto. No celular o que
+       vende é o produto aparecer rápido. */
+    .hero{padding:22px 18px 14px;}
+    .hero h1{font-size:26px;line-height:1.15;}
+    .hero p{margin-top:8px;font-size:13.5px;}
+    .catalog{padding:0 18px 48px;}
+
+    /* Busca e filtro na mesma linha, para não empurrar os produtos. */
+    .catalog-topo{gap:10px;margin-bottom:14px;}
+    .catalog-topo h2{font-size:12px;width:100%;margin-bottom:2px;}
+    .catalog-ferramentas{width:100%;flex-wrap:nowrap;gap:8px;}
+    .campo-busca{flex:1;min-width:0;padding:0 12px;}
+    .campo-busca input{padding:9px 6px;font-size:14px;}
+    .chip-filtro{padding:9px 12px;font-size:12.5px;flex:none;}
+    .chip-filtro span{display:none;}
+    .chip-filtro::after{content:'Disponíveis';}
+
+    .rodape-conteudo{padding:32px 18px 24px;gap:24px;}
+  }
+  /* O rótulo do filtro vinha em caixa alta por herança do bloco da vitrine. */
+  .chip-filtro, .chip-filtro span{text-transform:none;letter-spacing:0;}
 
   /* ---------- OVERLAY / MODAL ---------- */
   .overlay{
@@ -285,7 +427,13 @@
   .step-line{flex:1;height:1px;border-top:1px dashed var(--line);margin:0 2px;}
 
   /* ---------- SCREENS ---------- */
+  /* As telas de formulário ficam estreitas de propósito: formulário largo
+     cansa de ler. O catálogo é a exceção — ele usa a tela inteira, senão
+     num monitor sobra meia tela vazia dos dois lados. */
   .screen{display:none;padding:40px 24px 90px;max-width:640px;margin:0 auto;}
+  /* O rodapé encosta no catálogo: o padding de baixo das telas de formulário
+     somava com o do catálogo e abria um vão vazio antes do rodapé. */
+  #screen-catalogo{max-width:none;padding:0;}
   .screen.active{display:block;}
   .screen-head{margin-bottom:26px;}
   .screen-head h2{font-size:28px;}
@@ -469,11 +617,24 @@
 
 <!-- ---------- TELA: CATÁLOGO ---------- -->
 <section class="screen active" id="screen-catalogo">
-  <div class="hero" style="padding-left:0;padding-right:0;">
+  <div class="hero">
     <h1>Sandálias e chinelos para <em>cada passo</em> do seu dia.</h1>
+    <p>Entrega em Recife e região · Pix ou cartão em até 12x</p>
   </div>
   <div class="catalog">
-    <h2>Coleção atual</h2>
+    <div class="catalog-topo">
+      <h2>Coleção atual</h2>
+      <div class="catalog-ferramentas">
+        <div class="campo-busca">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input type="search" id="busca-produtos" placeholder="Buscar modelo ou numeração" aria-label="Buscar produtos">
+        </div>
+        <label class="chip-filtro">
+          <input type="checkbox" id="filtro-disponiveis">
+          <span>Só disponíveis</span>
+        </label>
+      </div>
+    </div>
     <div class="grid" id="product-grid"></div>
   </div>
 </section>
@@ -626,6 +787,39 @@
   </div>
 </section>
 
+<!-- ---------- RODAPÉ ---------- -->
+<footer class="rodape">
+  <div class="rodape-conteudo">
+    <div class="rodape-bloco">
+      <div class="rodape-titulo">Beblue</div>
+      <p>Sandálias e chinelos para o dia a dia. Qualidade que acompanha cada passo.</p>
+    </div>
+    <div class="rodape-bloco">
+      <div class="rodape-titulo">Onde estamos</div>
+      <p id="rodape-endereco"></p>
+      <p>Retirada sem taxa · Entrega conforme a distância</p>
+    </div>
+    <div class="rodape-bloco">
+      <div class="rodape-titulo">Fale com a gente</div>
+      <p><a id="rodape-whatsapp" href="#" target="_blank" rel="noopener">WhatsApp</a></p>
+      <p>Atendimento de segunda a sábado</p>
+    </div>
+    <div class="rodape-bloco">
+      <div class="rodape-titulo">Formas de pagamento</div>
+      <div class="selos-pagamento">
+        <span>Pix</span><span>Visa</span><span>Master</span><span>Elo</span><span>Amex</span>
+      </div>
+      <p class="rodape-seguro">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.4 9.3-8 10-4.6-.7-8-5-8-10V6l8-4z"/></svg>
+        Pagamento seguro processado pela InfinitePay
+      </p>
+    </div>
+  </div>
+  <div class="rodape-base">
+    <span>© <span id="rodape-ano"></span> Beblue · Sua melhor escolha</span>
+  </div>
+</footer>
+
 <!-- ---------- MODAL: DETALHE DO PRODUTO ---------- -->
 <div class="overlay" id="overlay-produto">
   <div class="modal">
@@ -644,6 +838,10 @@
     </div>
     <div id="aviso-estoque" class="aviso-estoque" style="display:none;"></div>
     <button class="btn btn-primary btn-block" id="btn-add-cart">Adicionar ao carrinho</button>
+    <div class="barra-produto">
+      <span class="valor" id="barra-preco"></span>
+      <button class="btn btn-primary" id="btn-add-cart-fixo">Adicionar</button>
+    </div>
   </div>
 </div>
 
@@ -1093,31 +1291,71 @@ async function calcularFrete(cep){
 /* =========================================================
    RENDER: CATÁLOGO
 ========================================================= */
+/* Busca e filtro da vitrine. Ficam fora do PRODUTOS para que a lista
+   original nunca se perca — filtrar é só uma forma de olhar para ela. */
+let buscaTexto = '';
+let somenteDisponiveis = false;
+
+/* Compara ignorando acento e maiúscula: quem digita "sandalia" tem que
+   achar "Sandália". */
+function normalizar(t){
+  return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function produtosVisiveis(){
+  const alvo = normalizar(buscaTexto).trim();
+  return PRODUTOS.filter(p => {
+    if (somenteDisponiveis && produtoEsgotado(p)) return false;
+    if (!alvo) return true;
+    // Busca pelo nome e também pela numeração, que é como muita gente procura.
+    const campos = normalizar(p.nome) + ' ' + p.tamanhos.join(' ');
+    return alvo.split(/\s+/).every(parte => campos.includes(parte));
+  });
+}
+
 function renderCatalogo(){
   const grid = document.getElementById('product-grid');
-  grid.innerHTML = PRODUTOS.map(p => {
+  const lista = produtosVisiveis();
+
+  if (lista.length === 0){
+    grid.innerHTML = `<p class="estado-catalogo">
+      Nenhum produto encontrado${buscaTexto ? ` para "${buscaTexto}"` : ''}.
+      ${somenteDisponiveis ? '<br>Tente desmarcar "Só disponíveis".' : ''}
+    </p>`;
+    return;
+  }
+
+  grid.innerHTML = lista.map(p => {
     const esgotado = produtoEsgotado(p);
     const disponiveis = p.tamanhos.filter(t => estoqueDoTamanho(p, t) > 0);
     const textoTamanhos = esgotado
       ? 'Sem estoque no momento'
-      : (disponiveis.length === p.tamanhos.length
-          ? `Tamanhos ${p.tamanhos.join(', ')}`
-          : `Tamanhos ${disponiveis.join(', ')}`);
+      : `Tam. ${disponiveis.join(' · ')}`;
+    // O código do produto é controle interno de estoque: para quem está
+    // comprando ele não diz nada e só polui o card.
     return `
-    <div class="product-card${esgotado ? ' card-esgotado' : ''}" data-id="${p.id}">
-      <div class="product-img">${ p.img ? `<img src="${p.img}" alt="${p.nome}">` : iconeSandalia(p.cor, p.variante) }</div>
+    <div class="product-card${esgotado ? ' card-esgotado' : ''}" data-id="${p.id}"
+         ${esgotado ? '' : 'role="button" tabindex="0"'}
+         aria-label="${p.nome}${esgotado ? ' — esgotado' : ''}">
+      <div class="product-img">
+        ${ esgotado ? '<span class="selo-esgotado">Esgotado</span>' : '' }
+        ${ p.img ? `<img src="${p.img}" alt="${p.nome}" loading="lazy">` : iconeSandalia(p.cor, p.variante) }
+      </div>
       <div class="product-body">
         <div class="product-name">${p.nome}</div>
-        <div class="product-sizes-hint">${textoTamanhos} · Cód. ${p.cod}</div>
-        <span class="tag">${formatBRL(p.preco)}</span>
-        ${ esgotado
-            ? `<span class="selo-esgotado">Esgotado</span>`
-            : `<button class="btn btn-primary btn-block" style="margin-top:auto;">Ver detalhes</button>` }
+        <div class="product-sizes-hint">${textoTamanhos}</div>
+        <div class="produto-preco">${formatBRL(p.preco)}</div>
       </div>
     </div>
   `;}).join('');
   grid.querySelectorAll('.product-card:not(.card-esgotado)').forEach(card => {
-    card.addEventListener('click', () => abrirProduto(Number(card.dataset.id)));
+    const abrir = () => abrirProduto(Number(card.dataset.id));
+    card.addEventListener('click', abrir);
+    // Agora que o card todo é o botão, quem navega pelo teclado precisa
+    // conseguir abrir com Enter ou espaço.
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); abrir(); }
+    });
   });
 }
 
@@ -1165,6 +1403,7 @@ function abrirProduto(id){
   montarGaleriaProduto(produtoAtual);
   document.getElementById('modal-nome').textContent = produtoAtual.nome;
   document.getElementById('modal-preco').textContent = formatBRL(produtoAtual.preco);
+  document.getElementById('barra-preco').textContent = formatBRL(produtoAtual.preco);
   document.getElementById('modal-desc').textContent = produtoAtual.desc;
   document.getElementById('qty-val').textContent = '1';
   const sizesEl = document.getElementById('modal-sizes');
@@ -1192,15 +1431,18 @@ function abrirProduto(id){
 function atualizarAvisoEstoque(){
   const aviso = document.getElementById('aviso-estoque');
   const btnAdd = document.getElementById('btn-add-cart');
+  const btnFixo = document.getElementById('btn-add-cart-fixo');
   if (!produtoAtual) return;
+  // Os dois botões são o mesmo comando: o que vale no celular é o da barra.
+  const travar = (v) => { btnAdd.disabled = v; btnFixo.disabled = v; };
 
   if (produtoEsgotado(produtoAtual)) {
     aviso.textContent = 'Este modelo está esgotado no momento.';
     aviso.style.display = 'block';
-    btnAdd.disabled = true;
+    travar(true);
     return;
   }
-  btnAdd.disabled = false;
+  travar(false);
 
   if (!tamanhoSelecionado) { aviso.style.display = 'none'; return; }
 
@@ -1249,6 +1491,10 @@ document.getElementById('qty-mais').addEventListener('click', () => {
   qtdSelecionada = qtdSelecionada + 1;
   document.getElementById('qty-val').textContent = qtdSelecionada;
 });
+document.getElementById('btn-add-cart-fixo').addEventListener('click', () => {
+  document.getElementById('btn-add-cart').click();
+});
+
 document.getElementById('btn-add-cart').addEventListener('click', () => {
   if (!tamanhoSelecionado) {
     alert('Escolha um tamanho antes de adicionar ao carrinho.');
@@ -2030,10 +2276,31 @@ document.getElementById('logo-home-btn').addEventListener('click', () => {
   irParaTela('screen-catalogo');
 });
 
+/* Busca: espera o cliente parar de digitar antes de redesenhar a lista. */
+let timerBusca = null;
+document.getElementById('busca-produtos').addEventListener('input', (e) => {
+  buscaTexto = e.target.value;
+  clearTimeout(timerBusca);
+  timerBusca = setTimeout(renderCatalogo, 180);
+});
+document.getElementById('filtro-disponiveis').addEventListener('change', (e) => {
+  somenteDisponiveis = e.target.checked;
+  renderCatalogo();
+});
+
+/* Rodapé: endereço, WhatsApp e ano vêm do CONFIG para não haver dois
+   lugares dizendo coisas diferentes sobre a loja. */
+function preencherRodape(){
+  document.getElementById('rodape-endereco').textContent = CONFIG.entrega.enderecoLoja;
+  document.getElementById('rodape-whatsapp').href = `https://wa.me/${CONFIG.whatsappNumero}`;
+  document.getElementById('rodape-ano').textContent = new Date().getFullYear();
+}
+
 /* =========================================================
    INÍCIO
 ========================================================= */
 async function iniciar(){
+  preencherRodape();
   const grid = document.getElementById('product-grid');
   grid.innerHTML = '<p class="estado-catalogo">Carregando produtos...</p>';
   const resultado = await carregarProdutos();
