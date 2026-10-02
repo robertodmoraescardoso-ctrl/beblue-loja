@@ -568,25 +568,42 @@
   <div class="wrap" style="padding:0;">
     <div class="steps" id="steps-pagamento"></div>
     <div class="screen-head">
-      <h2>Pagamento com Pix</h2>
-      <p>Escaneie o QR Code no app do seu banco ou copie o código.</p>
+      <h2 id="pagamento-titulo">Pagamento</h2>
+      <p id="pagamento-sub">Escolha Pix ou cartão de crédito na próxima tela.</p>
     </div>
     <div class="pay-card">
       <span class="tag" style="transform:none;">Total a pagar</span>
       <div id="detalhe-valores" class="detalhe-valores"></div>
       <div class="mono" style="font-size:34px;font-weight:700;margin-top:10px;" id="pay-total">R$ 0,00</div>
-      <div class="note">Depois de pagar, toque em <b>"Já paguei"</b> para registrar seu pedido.<br>
-        Seu pedido só fica reservado nesse momento. <span style="opacity:0.5;font-size:13px;">(v5)</span></div>
-      <div id="qrcode-box"></div>
-      <div class="copia-cola">
-        <input type="text" id="pix-code" readonly aria-label="Código Pix copia e cola">
-        <button type="button" id="btn-copiar">Copiar</button>
+
+      <!-- Caminho principal: checkout da InfinitePay (Pix ou cartão) -->
+      <div id="bloco-infinitepay">
+        <div class="note">
+          Você vai para o ambiente seguro da <b>InfinitePay</b> para pagar com
+          <b>Pix</b> ou <b>cartão de crédito em até 12x</b>, e volta para cá com o
+          pedido já confirmado. <span style="opacity:0.5;font-size:13px;">(v6)</span>
+        </div>
+        <div class="muted-frete" style="margin-top:10px;">
+          Seus dados de cartão são digitados direto na InfinitePay — a loja não tem acesso a eles.
+        </div>
       </div>
-      <div class="copy-feedback" id="copy-feedback"></div>
+
+      <!-- Plano B: Pix direto na chave da loja, se o checkout não abrir -->
+      <div id="bloco-pix-direto" style="display:none;">
+        <div class="note">Depois de pagar, toque em <b>"Já paguei"</b> para registrar seu pedido.<br>
+          Seu pedido só fica reservado nesse momento.</div>
+        <div id="qrcode-box"></div>
+        <div class="copia-cola">
+          <input type="text" id="pix-code" readonly aria-label="Código Pix copia e cola">
+          <button type="button" id="btn-copiar">Copiar</button>
+        </div>
+        <div class="copy-feedback" id="copy-feedback"></div>
+      </div>
     </div>
     <div id="aviso-pedido" class="aviso-pedido" style="display:none;"></div>
     <div class="action-row">
-      <button class="btn btn-sea" id="btn-confirmar-pagamento">Já paguei</button>
+      <button class="btn btn-primary" id="btn-pagar-online">Pagar com Pix ou cartão</button>
+      <button class="btn btn-sea" id="btn-confirmar-pagamento" style="display:none;">Já paguei</button>
       <button class="btn btn-outline" id="btn-whatsapp">Enviar pedido no WhatsApp</button>
     </div>
   </div>
@@ -602,6 +619,7 @@
     <p style="color:var(--ink-soft);margin-top:8px;">Obrigado, <span id="sucesso-nome"></span>. Assim que o pagamento cair, sua sandália entra em produção de envio.</p>
     <div class="order-code" id="sucesso-codigo"></div>
     <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Entregar em: <span id="sucesso-endereco"></span></p>
+    <p style="color:var(--ink-soft);font-size:13px;margin-top:8px;" id="sucesso-pagamento"></p>
     <div style="margin-top:22px;">
       <button class="btn btn-primary" id="btn-voltar-loja">Voltar à loja</button>
     </div>
@@ -694,6 +712,31 @@ const CONFIG = {
     apiKey: "sb_publishable_qpOz9Hgxl2eQXyL3HCepaA_vlRt2CR3",
     tabelaProdutos: "produtos",
     tabelaPedidos: "pedidos"
+  },
+
+  /* ===========================================================================
+     CHECKOUT INFINITEPAY — Pix e cartao de credito em ate 12x
+     O cliente paga no ambiente da InfinitePay e volta para ca. A loja nunca
+     ve numero de cartao: so recebe de volta a confirmacao do pagamento.
+
+     PARA FUNCIONAR, FALTA SO ISTO:
+       1. No app da InfinitePay, ative o checkout externo em
+          app.infinitepay.io -> Checkout -> Configuracoes. Sem isso a
+          InfinitePay recusa os links com "external_checkout_not_enabled".
+       2. Preencha "handle" abaixo com a sua InfiniteTag (seu nome de
+          usuario no app), SEM o "$" da frente.
+       3. Preencha "redirectUrl" com o endereco publico desta pagina —
+          e para ca que o cliente volta depois de pagar. Se deixar vazio,
+          a loja usa o endereco atual do navegador, o que ja funciona na
+          maioria dos casos.
+
+     Enquanto "handle" estiver vazio, a loja continua vendendo pelo Pix
+     direto na sua chave, exatamente como antes.
+  =========================================================================== */
+  infinitepay: {
+    ativo: true,
+    handle: "roberto-moraes-4bh",
+    redirectUrl: ""
   }
 };
 
@@ -1476,6 +1519,53 @@ function gerarPagamento(){
     <div class="linha-valor"><span>Produtos</span><span>${formatBRL(calcularSubtotal())}</span></div>
     <div class="linha-valor">${linhaEntrega}</div>`;
 
+  // O pedido entra no painel como "aguardando pagamento" assim que o cliente
+  // chega aqui. Sem travar estoque — quem desiste não bloqueia as suas peças.
+  registrarPendente();
+
+  // Com a InfinitePay configurada, o pagamento (Pix ou cartão) acontece lá.
+  // Sem ela, a loja cai no Pix direto na chave da casa, como sempre foi.
+  const ip = CONFIG.infinitepay;
+  if (ip && ip.ativo && ip.handle && total > 0){
+    mostrarCheckoutOnline();
+  } else {
+    mostrarPixDireto('');
+  }
+}
+
+/* Deixa a tela no modo "pagar pela InfinitePay". */
+function mostrarCheckoutOnline(){
+  document.getElementById('bloco-infinitepay').style.display = '';
+  document.getElementById('btn-pagar-online').style.display = '';
+  document.getElementById('bloco-pix-direto').style.display = 'none';
+  document.getElementById('btn-confirmar-pagamento').style.display = 'none';
+  document.getElementById('pagamento-titulo').textContent = 'Pagamento';
+  document.getElementById('pagamento-sub').textContent =
+    'Escolha Pix ou cartão de crédito na próxima tela.';
+}
+
+/* Plano B: o Pix de sempre, na chave da loja. Usado quando a InfinitePay
+   não está configurada ou quando o checkout dela não abre. */
+function mostrarPixDireto(motivo){
+  document.getElementById('bloco-infinitepay').style.display = 'none';
+  document.getElementById('btn-pagar-online').style.display = 'none';
+  document.getElementById('bloco-pix-direto').style.display = '';
+  document.getElementById('btn-confirmar-pagamento').style.display = '';
+  document.getElementById('pagamento-titulo').textContent = 'Pagamento com Pix';
+  document.getElementById('pagamento-sub').textContent =
+    'Escaneie o QR Code no app do seu banco ou copie o código.';
+
+  if (motivo){
+    const aviso = document.getElementById('aviso-pedido');
+    aviso.textContent = motivo;
+    aviso.style.display = 'block';
+  }
+  gerarPix();
+}
+
+/* Gera o QR Code e o copia-e-cola do Pix direto. */
+function gerarPix(){
+  const total = calcularTotal();
   const qrBoxAviso = document.getElementById('qrcode-box');
   if (total <= 0) {
     qrBoxAviso.innerHTML = '<p style="font-size:13px;color:var(--danger);padding:20px;max-width:220px;">Defina o preço dos produtos no código (campo "preco:") antes de gerar um Pix real — um QR Code de R$ 0,00 não é válido.</p>';
@@ -1500,10 +1590,271 @@ function gerarPagamento(){
   } else {
     qrBox.innerHTML = '<p style="font-size:12px;color:var(--ink-soft);padding:20px;">Não foi possível carregar o gerador de QR Code. Use o código copia e cola abaixo.</p>';
   }
+}
 
-  // Chegou no Pix: o pedido já entra no painel como "aguardando pagamento".
-  // Sem travar estoque — quem desiste aqui não bloqueia as suas peças.
-  registrarPendente();
+/* =========================================================
+   CHECKOUT INFINITEPAY — Pix e cartão de crédito em até 12x
+
+   O cliente sai do site, paga no ambiente da InfinitePay e volta. Como a
+   página recarrega na volta, o pedido precisa já estar no banco antes de
+   sair daqui (registrarPendente) e o essencial fica guardado no navegador
+   só para montar a tela de "pedido confirmado".
+
+   Na volta, a loja NÃO acredita na palavra do cliente nem na URL: ela
+   pergunta à InfinitePay se o pagamento caiu de verdade antes de confirmar
+   o pedido e baixar o estoque.
+========================================================= */
+const IP_API = 'https://api.checkout.infinitepay.io';
+
+const somenteDigitos = (v) => String(v || '').replace(/\D/g, '');
+
+function urlDeRetorno(){
+  return CONFIG.infinitepay.redirectUrl || (location.origin + location.pathname);
+}
+
+function guardarPedidoEmAndamento(){
+  try {
+    sessionStorage.setItem('beblue_pedido', JSON.stringify({
+      codigo: pedidoCodigo,
+      nome: cliente.nome,
+      modoEntrega: modoEntrega,
+      endereco: cliente.endereco
+    }));
+  } catch (e) { /* navegador sem storage: segue sem o resumo da tela final */ }
+}
+function lerPedidoEmAndamento(){
+  try { return JSON.parse(sessionStorage.getItem('beblue_pedido') || 'null'); }
+  catch (e) { return null; }
+}
+function limparPedidoEmAndamento(){
+  try { sessionStorage.removeItem('beblue_pedido'); } catch (e) {}
+}
+
+/* O site guarda cidade e estado num campo só ("Recife/PE"), mas o checkout
+   quer separado. Aceita também "Recife - PE" ou só "Recife", caso o cliente
+   tenha digitado à mão em vez de deixar o CEP preencher. */
+function separarCidadeUf(texto){
+  const bruto = String(texto || '').trim();
+  if (!bruto) return ['', ''];
+
+  // Separa só na ÚLTIMA barra/hífen, e só se o que vem depois for uma sigla
+  // de 2 letras. Assim "Mogi-Guaçu/SP" continua sendo Mogi-Guaçu, e não vira
+  // duas cidades.
+  const m = bruto.match(/^(.+?)\s*[\/\-]\s*([A-Za-z]{2})$/);
+  if (m) return [m[1].trim(), m[2].toUpperCase()];
+  return [bruto, ''];
+}
+
+/* Itens no formato da InfinitePay. Atenção: valores em CENTAVOS. */
+function itensParaInfinitePay(){
+  const itens = carrinho.map(item => {
+    const p = PRODUTOS.find(pr => pr.id === item.produtoId);
+    return {
+      quantity: item.qtd,
+      price: Math.round((p ? p.preco : 0) * 100),
+      description: `${p ? p.nome : 'Produto'} - tam. ${item.tamanho}`
+    };
+  });
+  // A entrega vai como item para o total cobrado bater com o do site.
+  if (modoEntrega !== 'retirada' && Number(taxaEntrega) > 0){
+    itens.push({
+      quantity: 1,
+      price: Math.round(Number(taxaEntrega) * 100),
+      description: 'Taxa de entrega'
+    });
+  }
+  return itens;
+}
+
+async function pagarOnline(){
+  const cfg = CONFIG.infinitepay;
+  const btn = document.getElementById('btn-pagar-online');
+  document.getElementById('aviso-pedido').style.display = 'none';
+
+  btn.disabled = true;
+  btn.textContent = 'Abrindo pagamento...';
+
+  const corpo = {
+    handle: cfg.handle,
+    order_nsu: pedidoCodigo,
+    redirect_url: urlDeRetorno(),
+    items: itensParaInfinitePay(),
+    customer: {
+      name: cliente.nome,
+      email: cliente.email,
+      phone_number: '+55' + somenteDigitos(cliente.celular)
+    }
+  };
+  if (modoEntrega !== 'retirada'){
+    const e = cliente.endereco || {};
+    const [cidade, uf] = separarCidadeUf(e.cidade);
+    // city/state não estão na documentação, mas o checkout aceita — e com
+    // eles o cliente pula a tela de endereço inteira, em vez de redigitar
+    // o que já preencheu aqui. Sem eles, só Cidade e Estado ficam em branco.
+    corpo.address = {
+      cep: somenteDigitos(e.cep),
+      street: e.rua || '',
+      neighborhood: e.bairro || '',
+      number: e.numero || '',
+      complement: e.complemento || '',
+      city: cidade,
+      state: uf
+    };
+  }
+
+  try {
+    const resp = await fetch(`${IP_API}/links`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    const dados = await resp.json().catch(() => ({}));
+
+    if (!resp.ok || !dados.url){
+      console.error('InfinitePay não devolveu o link:', dados);
+      btn.disabled = false;
+      btn.textContent = 'Pagar com Pix ou cartão';
+      mostrarPixDireto('Não conseguimos abrir o pagamento com cartão agora. Pague pelo Pix abaixo — é o mesmo pedido.');
+      return;
+    }
+
+    guardarPedidoEmAndamento();
+    window.location.href = dados.url;
+
+  } catch (erro){
+    console.error('Falha ao criar o link de pagamento:', erro);
+    btn.disabled = false;
+    btn.textContent = 'Pagar com Pix ou cartão';
+    mostrarPixDireto('Sem conexão com o pagamento online. Pague pelo Pix abaixo — é o mesmo pedido.');
+  }
+}
+
+/* O cliente voltou do checkout. Devolve true se esta visita é um retorno
+   de pagamento (e portanto a loja não deve abrir no catálogo). */
+async function tratarRetornoInfinitePay(){
+  const params = new URLSearchParams(location.search);
+  const orderNsu = params.get('order_nsu');
+  if (!orderNsu) return false;
+
+  const slug           = params.get('slug');
+  const transactionNsu = params.get('transaction_nsu');
+  const captureMethod  = params.get('capture_method') || 'credit_card';
+  const receiptUrl     = params.get('receipt_url');
+
+  // Limpa a URL: um F5 não pode refazer esta verificação.
+  history.replaceState(null, '', location.pathname);
+
+  const salvo = lerPedidoEmAndamento() || {};
+  limparPedidoEmAndamento();
+
+  irParaTela('screen-sucesso');
+  const elTitulo    = document.querySelector('#screen-sucesso h2');
+  const elCodigo    = document.getElementById('sucesso-codigo');
+  const elNome      = document.getElementById('sucesso-nome');
+  const elEndereco  = document.getElementById('sucesso-endereco');
+  const elPagamento = document.getElementById('sucesso-pagamento');
+
+  elNome.textContent = (salvo.nome || '').split(' ')[0] || '';
+  elCodigo.textContent = 'Pedido ' + orderNsu;
+  elEndereco.textContent = salvo.modoEntrega === 'retirada'
+    ? 'Retirada na loja — ' + CONFIG.entrega.enderecoLoja
+    : [ (salvo.endereco || {}).rua, (salvo.endereco || {}).numero ].filter(Boolean).join(', ') || '—';
+  elTitulo.textContent = 'Confirmando pagamento...';
+  elPagamento.textContent = 'Só um instante, estamos checando com a InfinitePay.';
+
+  // Pergunta à InfinitePay se o pagamento realmente caiu.
+  let pago = false, parcelas = 1, forma = captureMethod;
+  try {
+    const resp = await fetch(`${IP_API}/payment_check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        handle: CONFIG.infinitepay.handle,
+        order_nsu: orderNsu,
+        transaction_nsu: transactionNsu,
+        slug: slug
+      })
+    });
+    const dados = await resp.json().catch(() => ({}));
+    pago     = Boolean(dados.paid);
+    parcelas = Number(dados.installments) || 1;
+    forma    = dados.capture_method || captureMethod;
+  } catch (erro){
+    console.error('Não foi possível checar o pagamento:', erro);
+  }
+
+  if (!pago){
+    // Não confirmamos nada sem ter certeza: o pedido fica aguardando no
+    // painel e a loja avisa, em vez de prometer uma entrega que não foi paga.
+    elTitulo.textContent = 'Pagamento em análise';
+    elPagamento.innerHTML = 'Ainda não recebemos a confirmação da InfinitePay. '
+      + 'Se o valor já saiu da sua conta, está tudo certo: nós confirmamos o '
+      + 'pedido manualmente. Em caso de dúvida, fale com a gente no WhatsApp.';
+    carrinho = [];
+    atualizarContadorCarrinho();
+    return true;
+  }
+
+  // Pago de verdade: o banco confere o estoque e grava o valor líquido.
+  const resultado = await confirmarPagamentoNoBanco({
+    codigo: orderNsu,
+    captureMethod: forma,
+    parcelas: parcelas,
+    transactionNsu: transactionNsu,
+    slug: slug,
+    receiptUrl: receiptUrl
+  });
+
+  elTitulo.textContent = 'Pedido confirmado!';
+
+  const textoForma = forma === 'pix'
+    ? 'Pago com Pix pela InfinitePay.'
+    : `Pago no cartão de crédito em ${parcelas}x pela InfinitePay.`;
+  elPagamento.innerHTML = receiptUrl
+    ? `${textoForma} <a href="${receiptUrl}" target="_blank" rel="noopener">Ver comprovante</a>`
+    : textoForma;
+
+  if (!resultado.ok){
+    elPagamento.innerHTML += `<br><b>Atenção:</b> ${resultado.motivo} `
+      + 'Seu pagamento foi recebido — vamos resolver isso com você pelo WhatsApp.';
+  }
+
+  carrinho = [];
+  atualizarContadorCarrinho();
+  return true;
+}
+
+/* Grava a confirmação no banco: baixa estoque e registra a taxa cobrada
+   pela InfinitePay, para o painel enxergar o valor que de fato entrou. */
+async function confirmarPagamentoNoBanco(dados){
+  const cfg = CONFIG.integracaoAdmin;
+  if (!cfg.ativo || !cfg.apiUrl || !cfg.apiKey){
+    return { ok:false, motivo:'A loja não está conectada ao sistema.' };
+  }
+  try {
+    const resp = await fetch(`${cfg.apiUrl}/rpc/confirmar_pagamento_online`, {
+      method: 'POST',
+      headers: headersApi(),
+      body: JSON.stringify({
+        p_codigo:          dados.codigo,
+        p_capture_method:  dados.captureMethod,
+        p_parcelas:        dados.parcelas,
+        p_transaction_nsu: dados.transactionNsu,
+        p_slug:            dados.slug,
+        p_receipt_url:     dados.receiptUrl
+      })
+    });
+    if (resp.ok) return { ok:true };
+
+    const erro = await resp.json().catch(() => ({}));
+    const bruto = String(erro.message || erro.hint || '');
+    console.error('Falha ao confirmar o pedido:', bruto);
+    return { ok:false, motivo: motivoDoErro(bruto) };
+
+  } catch (erro){
+    console.error('Falha de conexão ao confirmar o pedido:', erro);
+    return { ok:false, motivo:'Não conseguimos falar com o sistema agora.' };
+  }
 }
 
 /* Copia o código Pix.
@@ -1602,6 +1953,7 @@ function abrirWhatsapp(){
 }
 
 document.getElementById('btn-whatsapp').addEventListener('click', abrirWhatsapp);
+document.getElementById('btn-pagar-online').addEventListener('click', pagarOnline);
 
 document.getElementById('btn-confirmar-pagamento').addEventListener('click', async () => {
   const btn = document.getElementById('btn-confirmar-pagamento');
@@ -1658,6 +2010,13 @@ async function iniciar(){
   grid.innerHTML = '<p class="estado-catalogo">Carregando produtos...</p>';
   const resultado = await carregarProdutos();
   PRODUTOS = resultado.produtos;
+
+  // Se esta visita é a volta do checkout da InfinitePay, a tela de sucesso
+  // manda — não faz sentido jogar o cliente de volta no catálogo.
+  if (await tratarRetornoInfinitePay()){
+    if (PRODUTOS.length > 0) renderCatalogo();
+    return;
+  }
 
   if (PRODUTOS.length === 0) {
     grid.innerHTML = `<p class="estado-catalogo">${
