@@ -683,6 +683,20 @@ const CONFIG = {
   entrega: {
     // Endereço da loja, mostrado ao cliente que escolhe retirada.
     enderecoLoja: "Rua Ibiapaba, 90 — Tamarineira, Recife",
+
+    // O mesmo endereço, em campos separados. É usado quando o cliente escolhe
+    // RETIRADA: o checkout da InfinitePay exige um endereço para liberar a tela
+    // de pagamento, então mandamos o da própria loja — que é justamente onde
+    // ele vai buscar. Sem isso, quem retira fica preso pedindo CEP e nunca
+    // chega na opção de cartão.
+    enderecoLojaDetalhado: {
+      cep: "52051100",
+      rua: "Rua Ibiapaba",
+      numero: "90",
+      bairro: "Tamarineira",
+      cidade: "Recife",
+      uf: "PE"
+    },
     origemLat: -8.0300,
     origemLng: -34.9050,
     faixas: [
@@ -1685,12 +1699,26 @@ async function pagarOnline(){
       phone_number: '+55' + somenteDigitos(cliente.celular)
     }
   };
-  if (modoEntrega !== 'retirada'){
+  // O checkout da InfinitePay SEMPRE pede um endereço antes de liberar o
+  // pagamento. Na entrega vai o do cliente; na retirada vai o da loja, senão
+  // quem retira trava numa tela de CEP e nunca vê a opção de cartão.
+  // city/state não estão na documentação, mas o checkout aceita — e com eles
+  // o cliente pula a tela de endereço inteira, em vez de redigitar o que já
+  // preencheu aqui.
+  if (modoEntrega === 'retirada'){
+    const loja = CONFIG.entrega.enderecoLojaDetalhado;
+    corpo.address = {
+      cep: somenteDigitos(loja.cep),
+      street: loja.rua,
+      neighborhood: loja.bairro,
+      number: loja.numero,
+      complement: 'Retirada na loja',
+      city: loja.cidade,
+      state: loja.uf
+    };
+  } else {
     const e = cliente.endereco || {};
     const [cidade, uf] = separarCidadeUf(e.cidade);
-    // city/state não estão na documentação, mas o checkout aceita — e com
-    // eles o cliente pula a tela de endereço inteira, em vez de redigitar
-    // o que já preencheu aqui. Sem eles, só Cidade e Estado ficam em branco.
     corpo.address = {
       cep: somenteDigitos(e.cep),
       street: e.rua || '',
